@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">MediaCall</string>
+    <string name="app_name">HFAC</string>
 
     <!-- Home -->
     <string name="server_url_hint">Signaling server (e.g. ws://192.168.1.10:8787)</string>
@@ -23,7 +23,7 @@
     <string name="unmute">Unmute</string>
     <string name="leave">Leave</string>
     <string name="code_copied">Code copied</string>
-    <string name="share_message">Join my MediaCall room!\nCode: %1$s\nLink: %2$s</string>
+    <string name="share_message">Join my HFAC room!\nCode: %1$s\nLink: %2$s</string>
     <string name="participants">Participants</string>
 
     <!-- Audio route descriptions -->
@@ -34,6 +34,6 @@
 
     <!-- Service -->
     <string name="notif_channel">Ongoing call</string>
-    <string name="notif_title">MediaCall in progress</string>
+    <string name="notif_title">HFAC in progress</string>
     <string name="notif_text">Room %s — audio on media channel</string>
 </resources>

@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MediaCall"
+rootProject.name = "HFAC"
 include(":app")

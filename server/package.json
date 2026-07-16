@@ -1,7 +1,7 @@
 {
-  "name": "mediacall-signaling",
+  "name": "hfac-signaling",
   "version": "0.1.0",
-  "description": "WebSocket signaling server for MediaCall rooms",
+  "description": "WebSocket signaling server for HFAC rooms",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

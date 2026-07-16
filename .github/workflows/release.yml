@@ -38,12 +38,12 @@ jobs:
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release.apk "mediacall-${GITHUB_REF_NAME}.apk"
+        run: cp app/build/outputs/apk/release/app-release.apk "hfac-${GITHUB_REF_NAME}.apk"
 
       - name: Create GitHub release with APK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "mediacall-${GITHUB_REF_NAME}.apk" \
-            --title "MediaCall $GITHUB_REF_NAME" \
+          gh release create "$GITHUB_REF_NAME" "hfac-${GITHUB_REF_NAME}.apk" \
+            --title "HFAC $GITHUB_REF_NAME" \
             --generate-notes

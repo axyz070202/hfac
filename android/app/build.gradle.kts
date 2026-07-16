@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.hfac.mediacall"
+    namespace = "com.hfac.calls"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.hfac.mediacall"
+        applicationId = "com.hfac.calls"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

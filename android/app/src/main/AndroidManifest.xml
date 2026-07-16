@@ -25,7 +25,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
-        android:theme="@style/Theme.MediaCall">
+        android:theme="@style/Theme.HFAC">
 
         <activity
             android:name=".ui.MainActivity"
@@ -35,12 +35,12 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Deep link: mediacall://join/12345678 -->
+            <!-- Deep link: hfac://join/12345678 -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="mediacall" android:host="join" />
+                <data android:scheme="hfac" android:host="join" />
             </intent-filter>
         </activity>
 

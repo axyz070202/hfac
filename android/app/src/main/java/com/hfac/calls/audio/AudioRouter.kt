@@ -1,4 +1,4 @@
-package com.hfac.mediacall.audio
+package com.hfac.calls.audio
 
 import android.content.Context
 import android.media.AudioDeviceCallback
@@ -6,7 +6,7 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
-import com.hfac.mediacall.R
+import com.hfac.calls.R
 
 /**
  * Watches audio peripherals and reports the effective route, WITHOUT ever

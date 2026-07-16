@@ -1,4 +1,4 @@
-package com.hfac.mediacall.ui
+package com.hfac.calls.ui
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -13,13 +13,13 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.hfac.mediacall.R
-import com.hfac.mediacall.audio.AudioRouter
-import com.hfac.mediacall.call.CallService
-import com.hfac.mediacall.rtc.WebRtcEngine
-import com.hfac.mediacall.signaling.SignalingClient
-import com.hfac.mediacall.util.Prefs
-import com.hfac.mediacall.util.QrCode
+import com.hfac.calls.R
+import com.hfac.calls.audio.AudioRouter
+import com.hfac.calls.call.CallService
+import com.hfac.calls.rtc.WebRtcEngine
+import com.hfac.calls.signaling.SignalingClient
+import com.hfac.calls.util.Prefs
+import com.hfac.calls.util.QrCode
 import org.json.JSONObject
 
 class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine.Listener {
@@ -207,7 +207,7 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
     private fun copyCode() {
         val code = roomCode ?: return
         val cb = getSystemService(ClipboardManager::class.java)
-        cb.setPrimaryClip(ClipData.newPlainText("MediaCall room code", code))
+        cb.setPrimaryClip(ClipData.newPlainText("HFAC room code", code))
         Toast.makeText(this, R.string.code_copied, Toast.LENGTH_SHORT).show()
     }
 

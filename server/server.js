@@ -1,4 +1,4 @@
-// MediaCall signaling server.
+// HFAC signaling server.
 //
 // Responsibilities:
 //   - room lifecycle: create (duo = max 2, group = max 8), join, leave
@@ -139,7 +139,7 @@ function handleMessage(ws, msg) {
 function joinPage(code) {
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Join MediaCall room</title>
+<title>Join HFAC room</title>
 <style>
   body{font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;
        justify-content:center;min-height:90vh;gap:1rem;background:#111;color:#eee;margin:0}
@@ -147,10 +147,10 @@ function joinPage(code) {
   a.btn{background:#4c8bf5;color:#fff;text-decoration:none;padding:.8rem 1.6rem;border-radius:.6rem}
   p{color:#999;max-width:26rem;text-align:center;padding:0 1rem}
 </style></head><body>
-<div>MediaCall room code</div>
+<div>HFAC room code</div>
 <div class="code">${code}</div>
-<a class="btn" href="mediacall://join/${code}">Open in MediaCall app</a>
-<p>If nothing happens, open the MediaCall app and enter the code manually,
+<a class="btn" href="hfac://join/${code}">Open in HFAC app</a>
+<p>If nothing happens, open the HFAC app and enter the code manually,
 or scan this page's QR code from inside the app.</p>
 </body></html>`;
 }
@@ -212,7 +212,7 @@ setInterval(() => {
 }, 30_000);
 
 httpServer.listen(PORT, () => {
-  console.log(`MediaCall signaling server on :${PORT}`);
+  console.log(`HFAC signaling server on :${PORT}`);
   console.log(`  ws endpoint:   ws://<host>:${PORT}/ws`);
   console.log(`  join pages:    http://<host>:${PORT}/j/<code>`);
 });

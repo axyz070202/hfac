@@ -1,4 +1,4 @@
-package com.hfac.mediacall.ui
+package com.hfac.calls.ui
 
 import android.Manifest
 import android.content.Intent
@@ -12,8 +12,8 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.hfac.mediacall.R
-import com.hfac.mediacall.util.Prefs
+import com.hfac.calls.R
+import com.hfac.calls.util.Prefs
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 
@@ -82,7 +82,7 @@ class MainActivity : AppCompatActivity() {
             qrScanner.launch(
                 ScanOptions()
                     .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                    .setPrompt("Scan a MediaCall room QR")
+                    .setPrompt("Scan a HFAC room QR")
                     .setBeepEnabled(false)
             )
         }
@@ -95,10 +95,10 @@ class MainActivity : AppCompatActivity() {
         handleDeepLink(intent)
     }
 
-    /** mediacall://join/12345678 (from links or the server's landing page). */
+    /** hfac://join/12345678 (from links or the server's landing page). */
     private fun handleDeepLink(intent: Intent?) {
         val data: Uri = intent?.data ?: return
-        if (data.scheme == "mediacall" && data.host == "join") {
+        if (data.scheme == "hfac" && data.host == "join") {
             val code = extractCode(data.toString()) ?: return
             joinCode.setText(code)
             launchCall { CallIntent.join(it, code) }

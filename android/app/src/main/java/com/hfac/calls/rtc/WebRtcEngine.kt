@@ -1,4 +1,4 @@
-package com.hfac.mediacall.rtc
+package com.hfac.calls.rtc
 
 import android.content.Context
 import android.media.AudioAttributes
@@ -95,7 +95,7 @@ class WebRtcEngine(
             }
         }
         audioSource = factory.createAudioSource(constraints)
-        localTrack = factory.createAudioTrack("mediacall_audio", audioSource)
+        localTrack = factory.createAudioTrack("hfac_audio", audioSource)
     }
 
     // ------------------------------------------------------------------ API
@@ -224,7 +224,7 @@ class WebRtcEngine(
             return null
         }
 
-        pc.addTrack(localTrack, listOf("mediacall_stream"))
+        pc.addTrack(localTrack, listOf("hfac_stream"))
         val link = PeerLink(pc)
         peers[peerId] = link
         return link

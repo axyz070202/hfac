@@ -1,4 +1,4 @@
-package com.hfac.mediacall.util
+package com.hfac.calls.util
 
 import android.graphics.Bitmap
 import android.graphics.Color

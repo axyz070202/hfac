@@ -1,10 +1,10 @@
-package com.hfac.mediacall.util
+package com.hfac.calls.util
 
 import android.content.Context
 
 /** Tiny settings store: signaling server URL + display name + Hi-Fi flag. */
 class Prefs(context: Context) {
-    private val sp = context.getSharedPreferences("mediacall", Context.MODE_PRIVATE)
+    private val sp = context.getSharedPreferences("hfac", Context.MODE_PRIVATE)
 
     var serverUrl: String
         get() = sp.getString("serverUrl", "") ?: ""

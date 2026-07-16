@@ -1,4 +1,4 @@
-package com.hfac.mediacall.signaling
+package com.hfac.calls.signaling
 
 import android.util.Log
 import okhttp3.OkHttpClient
@@ -10,7 +10,7 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * Thin JSON-over-WebSocket client for the MediaCall signaling server.
+ * Thin JSON-over-WebSocket client for the HFAC signaling server.
  * Callbacks arrive on OkHttp's background thread — marshal to the main
  * thread in the UI layer.
  */

@@ -61,7 +61,7 @@ async function main() {
 
   const page = await fetch(`${BASE}/j/${created.code}`).then((r) => r.text());
   check('join page has code + deep link',
-    page.includes(created.code) && page.includes('mediacall://join/'));
+    page.includes(created.code) && page.includes('hfac://join/'));
 
   const b = await connect();
   b.send(JSON.stringify({ type: 'join', code: created.code, name: 'Bob' }));

@@ -1,4 +1,4 @@
-package com.hfac.mediacall.call
+package com.hfac.calls.call
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -11,8 +11,8 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import com.hfac.mediacall.R
-import com.hfac.mediacall.ui.CallActivity
+import com.hfac.calls.R
+import com.hfac.calls.ui.CallActivity
 
 /**
  * Foreground service that keeps the mic + playback alive while the call is

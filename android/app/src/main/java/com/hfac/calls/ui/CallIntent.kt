@@ -1,4 +1,4 @@
-package com.hfac.mediacall.ui
+package com.hfac.calls.ui
 
 import android.content.Context
 import android.content.Intent

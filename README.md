@@ -1,9 +1,9 @@
-# MediaCall — internet calls on the media audio channel
+# HFAC — internet calls on the media audio channel
 
 Android voice calls normally run on the *voice communication* audio path
 (`USAGE_VOICE_COMMUNICATION` / `MODE_IN_COMMUNICATION`). That path forces
 Bluetooth into the low-quality SCO/HFP profile and applies aggressive,
-narrowband-era processing. **MediaCall** places internet (WebRTC) calls on the
+narrowband-era processing. **HFAC** places internet (WebRTC) calls on the
 **media** path (`USAGE_MEDIA`, `STREAM_MUSIC`) instead, so call audio gets the
 same quality as music playback.
 
@@ -15,7 +15,7 @@ same quality as music playback.
 | Bluetooth earphones | **A2DP (media profile)** — full quality | **Phone's built-in mic** | We never start SCO and never enter `MODE_IN_COMMUNICATION`, so BT stays on A2DP. A2DP has no mic channel, so capture naturally falls back to the phone mic — exactly the intended split. |
 | Nothing connected | Loudspeaker, media stream | Phone mic | Echo-prone; WebRTC's software AEC3 echo canceller is enabled to compensate. Quality of echo cancellation varies by device/volume. |
 
-Key implementation points (see `android/app/src/main/java/com/hfac/mediacall/rtc/WebRtcEngine.kt`):
+Key implementation points (see `android/app/src/main/java/com/hfac/calls/rtc/WebRtcEngine.kt`):
 
 - `JavaAudioDeviceModule` is built with `AudioAttributes(USAGE_MEDIA)` → playback is an ordinary media `AudioTrack`.
 - Capture uses `MediaRecorder.AudioSource.MIC` (not `VOICE_COMMUNICATION`), so no narrowband voice-call preprocessing.
@@ -31,7 +31,7 @@ Key implementation points (see `android/app/src/main/java/com/hfac/mediacall/rtc
 
 A room is created by one user and joined by others via any of:
 
-1. **Link** — `http(s)://<server>/j/<code>` (the server serves a landing page with an "open in app" deep link `mediacall://join/<code>`)
+1. **Link** — `http(s)://<server>/j/<code>` (the server serves a landing page with an "open in app" deep link `hfac://join/<code>`)
 2. **QR code** — generated in-app (encodes the link), scannable in-app
 3. **8-digit numeric code** — typed manually
 
