@@ -25,14 +25,16 @@ class CallService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val code = intent?.getStringExtra(EXTRA_CODE) ?: ""
         val notification = buildNotification(code)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> startForeground(
                 NOTIF_ID, notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
             )
-        } else {
-            startForeground(NOTIF_ID, notification)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> startForeground(
+                NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            )
+            else -> startForeground(NOTIF_ID, notification)
         }
         return START_NOT_STICKY
     }
