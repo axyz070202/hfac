@@ -1,0 +1,18 @@
+# Render blueprint: deploys the HFAC signaling server.
+# In the Render dashboard: New -> Blueprint -> point at this repo.
+# Set METERED_DOMAIN / METERED_API_KEY in the service's environment to enable
+# TURN credential delivery via /ice (see server/server.js).
+services:
+  - type: web
+    name: hfac-signaling
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm ci
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: METERED_DOMAIN
+        sync: false
+      - key: METERED_API_KEY
+        sync: false

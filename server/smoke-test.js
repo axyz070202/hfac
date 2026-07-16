@@ -87,6 +87,19 @@ async function main() {
   const notFound = await d.next();
   check('unknown room rejected', notFound.type === 'error' && notFound.reason === 'room not found');
 
+  const ice = await fetch(`${BASE}/ice`).then((r) => r.json());
+  check('ice config returns servers', Array.isArray(ice.iceServers) && ice.iceServers.length > 0);
+
+  // Hammer join until the per-IP limiter trips (all test clients share one IP).
+  const bot = await connect();
+  let limited = false;
+  for (let i = 0; i < 12 && !limited; i++) {
+    bot.send(JSON.stringify({ type: 'join', code: '99999999', name: 'Bot' }));
+    const r = await bot.next();
+    limited = r.type === 'error' && /too many join attempts/.test(r.reason);
+  }
+  check('join attempts are rate limited', limited);
+
   return results.filter(([, ok]) => !ok).length;
 }
 
