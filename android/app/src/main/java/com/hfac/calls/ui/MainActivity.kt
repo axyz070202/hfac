@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.hfac.calls.BuildConfig
 import com.hfac.calls.R
 import com.hfac.calls.util.Prefs
 import com.journeyapps.barcodescanner.ScanContract
@@ -64,6 +65,20 @@ class MainActivity : AppCompatActivity() {
         displayName.setText(prefs.displayName)
         hifiMode.isChecked = prefs.hiFi
 
+        // With a baked-in server, users never see the URL field. Long-press
+        // the title to reveal it as a dev override; a manually saved URL
+        // keeps it visible and takes precedence.
+        val serverUrlLayout = findViewById<android.view.View>(R.id.serverUrlLayout)
+        if (BuildConfig.DEFAULT_SERVER_URL.isNotEmpty() && prefs.serverUrl.isEmpty()) {
+            serverUrlLayout.visibility = android.view.View.GONE
+        }
+        findViewById<android.view.View>(R.id.appTitle).setOnLongClickListener {
+            serverUrlLayout.visibility =
+                if (serverUrlLayout.visibility == android.view.View.GONE)
+                    android.view.View.VISIBLE else android.view.View.GONE
+            true
+        }
+
         findViewById<Button>(R.id.btnCreateDuo).setOnClickListener {
             launchCall { CallIntent.create(it, "duo") }
         }
@@ -106,13 +121,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun launchCall(build: (CallIntent.Base) -> Intent) {
-        val server = serverUrl.text.toString().trim()
+        val typed = serverUrl.text.toString().trim()
+        val server = typed.ifEmpty { BuildConfig.DEFAULT_SERVER_URL }
         val name = displayName.text.toString().trim().ifEmpty { "Guest" }
         if (server.isEmpty()) {
             Toast.makeText(this, R.string.server_url_hint, Toast.LENGTH_SHORT).show()
             return
         }
-        prefs.serverUrl = server
+        // Only persist explicit overrides — never the baked-in default.
+        prefs.serverUrl = if (typed == BuildConfig.DEFAULT_SERVER_URL) "" else typed
         prefs.displayName = name
         prefs.hiFi = hifiMode.isChecked
 

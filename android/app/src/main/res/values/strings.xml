@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HFAC</string>
+    <string name="app_tagline">High Fidelity Audio Calls — on the media channel</string>
 
     <!-- Home -->
     <string name="server_url_hint">Signaling server (e.g. ws://192.168.1.10:8787)</string>
@@ -25,6 +26,7 @@
     <string name="code_copied">Code copied</string>
     <string name="share_message">Join my HFAC room!\nCode: %1$s\nLink: %2$s</string>
     <string name="participants">Participants</string>
+    <string name="safety_code">Safety %s</string>
 
     <!-- Audio route descriptions -->
     <string name="route_wired">Wired headset — media channel, headset mic</string>

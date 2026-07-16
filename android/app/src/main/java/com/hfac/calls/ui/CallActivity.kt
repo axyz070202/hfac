@@ -18,6 +18,7 @@ import com.hfac.calls.audio.AudioRouter
 import com.hfac.calls.call.CallService
 import com.hfac.calls.rtc.WebRtcEngine
 import com.hfac.calls.signaling.SignalingClient
+import com.hfac.calls.util.IceConfig
 import com.hfac.calls.util.Prefs
 import com.hfac.calls.util.QrCode
 import org.json.JSONObject
@@ -41,6 +42,7 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
     /** peerId -> display name; also drives the participant list UI. */
     private val participants = LinkedHashMap<String, String>()
     private val connectedPeers = mutableSetOf<String>()
+    private val safetyCodes = HashMap<String, String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,22 +62,29 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
         val createMode = intent.getStringExtra(CallIntent.EXTRA_MODE)
         val joinCode = intent.getStringExtra(CallIntent.EXTRA_CODE)
 
-        engine = WebRtcEngine(applicationContext, hiFi, this)
         audioRouter = AudioRouter(applicationContext) { resId ->
             runOnUiThread { routeStatus.text = getString(resId) }
         }
         audioRouter.start()
 
-        signaling = SignalingClient(Prefs.toWsUrl(server), this)
-        val httpBase = Prefs.toHttpBase(server)
+        shareBaseUrl = Prefs.toHttpBase(server)
 
-        // Once connected, either create or join.
+        // Once the socket is open, either create or join.
         pendingOnOpen = {
             if (createMode != null) signaling.createRoom(createMode, name)
             else signaling.joinRoom(joinCode ?: "", name)
         }
-        shareBaseUrl = httpBase
-        signaling.connect()
+
+        // ICE config (incl. short-lived TURN credentials) comes from the
+        // server, then the call stack starts. Falls back to STUN on failure.
+        IceConfig.fetch(shareBaseUrl) { servers ->
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                engine = WebRtcEngine(applicationContext, hiFi, servers, this)
+                signaling = SignalingClient(Prefs.toWsUrl(server), this)
+                signaling.connect()
+            }
+        }
 
         findViewById<Button>(R.id.btnShare).setOnClickListener { shareRoom() }
         findViewById<Button>(R.id.btnQr).setOnClickListener { showQr() }
@@ -164,13 +173,21 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
         runOnUiThread { connectedPeers.remove(peerId); renderParticipants() }
     }
 
+    override fun onSafetyCode(peerId: String, code: String) {
+        runOnUiThread { safetyCodes[peerId] = code; renderParticipants() }
+    }
+
     // ------------------------------------------------------------------- UI
 
     private fun renderParticipants() {
         participantList.removeAllViews()
         for ((id, name) in participants) {
+            val status = if (id in connectedPeers) "🔊" else "⏳"
+            val safety = safetyCodes[id]?.let {
+                "   ·   ${getString(R.string.safety_code, it)}"
+            } ?: ""
             val row = TextView(this).apply {
-                text = if (id in connectedPeers) "🔊  $name" else "⏳  $name"
+                text = "$status  $name$safety"
                 textSize = 18f
                 setPadding(0, 12, 0, 12)
             }
@@ -212,6 +229,7 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
     }
 
     private fun toggleMute() {
+        if (!::engine.isInitialized) return
         muted = !muted
         engine.setMuted(muted)
         btnMute.text = getString(if (muted) R.string.unmute else R.string.mute)
@@ -220,8 +238,8 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
     override fun onDestroy() {
         leaving = true
         audioRouter.stop()
-        signaling.leave()
-        engine.close()
+        if (::signaling.isInitialized) signaling.leave()
+        if (::engine.isInitialized) engine.close()
         CallService.stop(this)
         super.onDestroy()
     }

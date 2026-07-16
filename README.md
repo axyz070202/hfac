@@ -51,8 +51,40 @@ npm start            # listens on 0.0.0.0:8787 (PORT env var to change)
 ```
 
 The server only relays signaling (SDP/ICE) — call audio flows peer-to-peer.
-For peers behind symmetric NATs add a TURN server to `ICE_SERVERS` in
-`WebRtcEngine.kt` (STUN alone covers most home/mobile networks).
+
+## Deploying to the internet (Render + Metered TURN)
+
+1. **Render**: dashboard → New → Blueprint → point at this repo
+   (`render.yaml` deploys `server/` as a free web service). Note the URL,
+   e.g. `https://hfac-signaling.onrender.com`.
+2. **Metered** (TURN relay for peers behind carrier-grade NAT): create a free
+   account at metered.ca, create a TURN app, then set `METERED_DOMAIN`
+   (e.g. `yourapp.metered.live`) and `METERED_API_KEY` in the Render service's
+   environment. The server's `GET /ice` endpoint hands the app STUN + fresh
+   TURN credentials at call time — nothing is baked into the APK.
+   Alternatively point `TURN_URLS`/`TURN_USERNAME`/`TURN_CREDENTIAL` at your
+   own coturn.
+3. **Bake the server URL into the app**: set repo variable `HFAC_SERVER_URL`
+   (GitHub → Settings → Secrets and variables → Actions → Variables) to the
+   Render URL. CI passes it into every build; users never enter a URL.
+   Local builds: `./gradlew assembleDebug -PHFAC_SERVER_URL=https://...`.
+
+## Security model
+
+- **Call audio is always end-to-end encrypted** (DTLS-SRTP, mandated by
+  WebRTC). TURN relays and the signaling server carry only ciphertext.
+- **Safety codes**: each peer link shows a short code derived from both ends'
+  DTLS certificate fingerprints. Both sides seeing the same code rules out a
+  man-in-the-middle at the signaling layer — compare it out loud for
+  sensitive calls.
+- **TLS**: release builds refuse cleartext; use `https://`/`wss://` servers.
+  Debug builds allow `ws://` for LAN testing.
+- **Abuse limits** (server): 10 join attempts/min and 20 room creations/hour
+  per IP, 300 messages/10 s per connection, 64 KB max message, 500 active
+  rooms, 12-hour room lifetime.
+- **Room access = code possession** (like a meeting link). Codes are
+  8 random digits; don't post them publicly.
+- Peers in a call see each other's IP addresses (inherent to P2P).
 
 ## Building the app
 

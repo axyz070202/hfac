@@ -41,6 +41,7 @@ import java.util.concurrent.Executors
 class WebRtcEngine(
     context: Context,
     private val hiFi: Boolean,
+    private val iceServers: List<PeerConnection.IceServer>,
     private val listener: Listener,
 ) {
     interface Listener {
@@ -48,6 +49,13 @@ class WebRtcEngine(
         fun onSignalOut(peerId: String, payload: JSONObject)
         fun onPeerConnected(peerId: String)
         fun onPeerDisconnected(peerId: String)
+
+        /**
+         * Short code derived from both ends' DTLS certificate fingerprints.
+         * Both participants see the same code for their link; comparing it
+         * out loud rules out a signaling-server man-in-the-middle.
+         */
+        fun onSafetyCode(peerId: String, code: String)
     }
 
     private val executor = Executors.newSingleThreadExecutor()
@@ -195,7 +203,7 @@ class WebRtcEngine(
     private fun getOrCreateLink(peerId: String): PeerLink? {
         peers[peerId]?.let { return it }
 
-        val config = PeerConnection.RTCConfiguration(ICE_SERVERS).apply {
+        val config = PeerConnection.RTCConfiguration(iceServers).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
         }
         val pc = factory.createPeerConnection(config, object : PeerConnectionObserverAdapter() {
@@ -210,8 +218,10 @@ class WebRtcEngine(
 
             override fun onConnectionChange(newState: PeerConnection.PeerConnectionState) {
                 when (newState) {
-                    PeerConnection.PeerConnectionState.CONNECTED ->
+                    PeerConnection.PeerConnectionState.CONNECTED -> {
                         listener.onPeerConnected(peerId)
+                        emitSafetyCode(peerId)
+                    }
                     PeerConnection.PeerConnectionState.DISCONNECTED,
                     PeerConnection.PeerConnectionState.FAILED,
                     PeerConnection.PeerConnectionState.CLOSED ->
@@ -230,6 +240,27 @@ class WebRtcEngine(
         return link
     }
 
+    /**
+     * Derives a short verification code from the DTLS certificate fingerprints
+     * of both ends (found in the local and remote SDP). A man-in-the-middle
+     * must substitute its own certificates, which changes the code on at
+     * least one side — so matching codes verify the link is truly end-to-end.
+     */
+    private fun emitSafetyCode(peerId: String) = executor.execute {
+        val pc = peers[peerId]?.pc ?: return@execute
+        val local = fingerprintOf(pc.localDescription?.description)
+        val remote = fingerprintOf(pc.remoteDescription?.description)
+        if (local == null || remote == null) return@execute
+        val material = listOf(local, remote).sorted().joinToString("|")
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(material.toByteArray(Charsets.UTF_8))
+        val code = "%02X%02X-%02X%02X".format(digest[0], digest[1], digest[2], digest[3])
+        listener.onSafetyCode(peerId, code)
+    }
+
+    private fun fingerprintOf(sdp: String?): String? =
+        sdp?.let { FINGERPRINT_RE.find(it)?.groupValues?.get(1)?.uppercase() }
+
     private fun applySenderBitrate(pc: PeerConnection) {
         for (sender in pc.senders) {
             val params = sender.parameters
@@ -246,11 +277,7 @@ class WebRtcEngine(
         private const val TAG = "WebRtcEngine"
         private const val TARGET_BITRATE_BPS = 128_000
 
-        private val ICE_SERVERS = listOf(
-            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
-            PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
-            // Add a TURN server here for symmetric-NAT traversal if needed.
-        )
+        private val FINGERPRINT_RE = Regex("a=fingerprint:\\S+ ([0-9A-Fa-f:]+)")
 
         /**
          * Rewrites the Opus fmtp line for maximum quality: 48 kHz fullband,

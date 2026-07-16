@@ -35,6 +35,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          ORG_GRADLE_PROJECT_HFAC_SERVER_URL: ${{ vars.HFAC_SERVER_URL }}
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Rename APK

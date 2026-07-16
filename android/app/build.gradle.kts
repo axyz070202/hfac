@@ -11,8 +11,19 @@ android {
         applicationId = "com.hfac.calls"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+
+        // Baked-in signaling server. Supplied at build time via the
+        // HFAC_SERVER_URL Gradle property (CI sets ORG_GRADLE_PROJECT_HFAC_SERVER_URL
+        // from a repo variable). Empty -> the app shows the manual server field.
+        val defaultServerUrl = (project.findProperty("HFAC_SERVER_URL") as String?)
+            ?: System.getenv("HFAC_SERVER_URL") ?: ""
+        buildConfigField("String", "DEFAULT_SERVER_URL", "\"$defaultServerUrl\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     // Release signing comes from the environment (CI decodes the keystore from
