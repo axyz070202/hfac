@@ -4,7 +4,8 @@
   "description": "WebSocket signaling server for MediaCall rooms",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node smoke-test.js"
   },
   "engines": {
     "node": ">=18"
