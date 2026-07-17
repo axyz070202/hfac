@@ -361,9 +361,16 @@ function staticTurnServers() {
 async function fetchMeteredWithSecretKey(domain, secretKey) {
   const createResp = await fetch(
     `https://${domain}/api/v1/turn/credential?secretKey=${secretKey}`,
-    { method: 'POST' }
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ expiryInSeconds: ICE_CACHE_MS / 1000, label: 'hfac' }),
+    }
   );
-  if (!createResp.ok) throw new Error(`metered create credential: HTTP ${createResp.status}`);
+  if (!createResp.ok) {
+    const detail = await createResp.text().catch(() => '');
+    throw new Error(`metered create credential: HTTP ${createResp.status} ${detail}`.trim());
+  }
   const { apiKey } = await createResp.json();
   if (!apiKey) throw new Error('metered create credential: no apiKey in response');
   return fetchMeteredWithApiKey(domain, apiKey);
