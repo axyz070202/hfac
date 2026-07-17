@@ -79,6 +79,29 @@ async function main() {
   check('signal relayed',
     sig.type === 'signal' && sig.data.sdp === 'fake-offer' && sig.from === joined.selfId);
 
+  // Same three signal "kinds" the web client (server/web/app.js) and the
+  // Android app both use - verify shape survives the round trip intact.
+  b.send(JSON.stringify({
+    type: 'signal', to: created.selfId, data: { kind: 'offer', sdp: 'v=0\r\na=rtpmap:111 opus/48000/2' },
+  }));
+  const offerSig = await a.next();
+  check('offer-kind signal relayed intact',
+    offerSig.data.kind === 'offer' && offerSig.data.sdp === 'v=0\r\na=rtpmap:111 opus/48000/2');
+
+  a.send(JSON.stringify({
+    type: 'signal', to: joined.selfId, data: { kind: 'answer', sdp: 'v=0\r\na=rtpmap:111 opus/48000/2' },
+  }));
+  const answerSig = await b.next();
+  check('answer-kind signal relayed intact', answerSig.data.kind === 'answer');
+
+  b.send(JSON.stringify({
+    type: 'signal', to: created.selfId,
+    data: { kind: 'candidate', candidate: 'candidate:1 1 UDP 1 1.2.3.4 5000 typ host', sdpMid: '0', sdpMLineIndex: 0 },
+  }));
+  const candSig = await a.next();
+  check('candidate-kind signal preserves sdpMid/sdpMLineIndex',
+    candSig.data.kind === 'candidate' && candSig.data.sdpMid === '0' && candSig.data.sdpMLineIndex === 0);
+
   const c = await connect();
   c.send(JSON.stringify({ type: 'join', code: created.code, name: 'Carol' }));
   const full = await c.next();

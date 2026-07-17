@@ -12,7 +12,13 @@
 
 const http = require('http');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { WebSocketServer } = require('ws');
+
+// Read once at startup; content never changes per-request.
+const CALL_JS = fs.readFileSync(path.join(__dirname, 'web', 'app.js'), 'utf8');
+const CALL_CSS = fs.readFileSync(path.join(__dirname, 'web', 'style.css'), 'utf8');
 
 const PORT = process.env.PORT || 8787;
 const MAX_GROUP = 8;
@@ -260,6 +266,7 @@ function joinPage(code) {
   </ol>
   <a class="btn primary" href="${APK_DOWNLOAD_URL}">⬇ Download HFAC v${APP_VERSION} (Android)</a>
   <a class="btn secondary" href="hfac://join/${code}">Open in HFAC app</a>
+  <a class="btn secondary" href="/call/?code=${code}">🌐 Join in browser (no app needed)</a>
   <p class="hint">Or scan this page's QR code from inside the app.</p>
 </div>
 <footer>v${APP_VERSION} · Powered by Nightfury</footer>
@@ -323,8 +330,69 @@ function invitePage() {
 </div>
 <div class="card">${featureHtml}</div>
 <a class="btn" href="${APK_DOWNLOAD_URL}">⬇ Download HFAC v${APP_VERSION} for Android</a>
-<p class="platform-note">Android only, for now.</p>
+<p class="platform-note">
+  iPhone or no Android? <a href="/call/" style="color:#9fb4e8">Call from your browser</a>
+  instead (best with wired headphones or speaker).
+</p>
 <footer>v${APP_VERSION} · Powered by Nightfury</footer>
+</body></html>`;
+}
+
+// Browser-based calling client (no app install). Scoped to wired-headphone /
+// speaker audio quality — there's no web API to control Bluetooth audio
+// profile the way the Android app's AudioAttributes/AudioManager code does,
+// so this deliberately doesn't attempt the A2DP trick. See server/web/app.js
+// for the actual WebRTC logic (same signaling protocol, same Opus tuning,
+// same safety codes as the Android app).
+function callPage() {
+  return `<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HFAC — call in your browser</title>
+<link rel="stylesheet" href="/call/style.css">
+</head><body>
+<h1>HFAC</h1>
+<p class="tagline">Calling in your browser — best with wired headphones or
+speaker. Android? <a href="/">Get the app</a> for full Bluetooth quality.</p>
+
+<div id="homeView" class="card">
+  <h2>Your name</h2>
+  <input type="text" id="nameInput" placeholder="Guest">
+  <label class="checkbox-row">
+    <input type="checkbox" id="hifiCheckbox">
+    Hi-Fi mode (no echo cancellation — wired headset only)
+  </label>
+
+  <hr class="divider">
+
+  <h2>Start a call</h2>
+  <button class="btn-primary" id="createDuoBtn">New 1-to-1 room</button>
+  <button class="btn-secondary" id="createGroupBtn">New group room</button>
+
+  <hr class="divider">
+
+  <h2>Join a call</h2>
+  <input type="text" id="joinCodeInput" placeholder="8-digit room code" maxlength="8" inputmode="numeric">
+  <button class="btn-primary" id="joinBtn">Join</button>
+</div>
+
+<div id="callView" class="card hidden">
+  <div id="roomCodeText"></div>
+  <div id="statusText"></div>
+  <div class="button-row">
+    <button class="btn-secondary" id="shareBtn">Share</button>
+    <button class="btn-secondary" id="copyBtn">Copy code</button>
+  </div>
+  <div id="participantList"></div>
+  <div class="button-row">
+    <button class="btn-secondary" id="muteBtn">Mute</button>
+    <button class="btn-secondary" id="leaveBtn">Leave</button>
+  </div>
+</div>
+
+<div id="remoteAudios"></div>
+
+<footer>v${APP_VERSION} · Powered by Nightfury</footer>
+<script src="/call/app.js" defer></script>
 </body></html>`;
 }
 
@@ -428,6 +496,15 @@ const httpServer = http.createServer((req, res) => {
   } else if (joinMatch) {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(joinPage(joinMatch[1]));
+  } else if (url.pathname === '/call' || url.pathname === '/call/') {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(callPage());
+  } else if (url.pathname === '/call/app.js') {
+    res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
+    res.end(CALL_JS);
+  } else if (url.pathname === '/call/style.css') {
+    res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+    res.end(CALL_CSS);
   } else if (url.pathname === '/ice') {
     // Kept for manual testing/back-compat; the app itself gets ICE servers
     // via the WebSocket create/join responses above, which already ride on

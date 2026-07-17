@@ -35,10 +35,32 @@ A room is created by one user and joined by others via any of:
 2. **QR code** — generated in-app (encodes the link), scannable in-app
 3. **8-digit numeric code** — typed manually
 
+## Web calling client (iOS / any browser, no app install)
+
+`/call/` (`server/web/`) is a vanilla JS/HTML/CSS client using the browser's
+native `RTCPeerConnection` and `WebSocket` — same signaling protocol, same
+Opus SDP tuning, same per-peer safety codes as the Android app, reusing the
+existing server with no changes to its wire protocol. Every `/j/<code>` page
+links to `/call/?code=<code>`, and `/` links to `/call/` directly.
+
+**Scoped to wired-headphone / speaker audio.** There is no web API that lets
+a page control Bluetooth audio profile the way the Android app's
+`AudioAttributes`/`AudioManager` code does — that control (`AVAudioSession`
+on iOS, `AudioManager` on Android) is native-only. A web page cannot force
+Bluetooth into A2DP the way the app does; this client doesn't attempt it.
+
+**Known v1 limitations:**
+- No QR generation/scanning (link + 8-digit code only)
+- No background audio: iOS Safari suspends the tab when backgrounded or the
+  screen locks, dropping the call — keep the tab foregrounded and the screen
+  on for the duration of a call. A native app (with a foreground service, as
+  the Android app has) is the only real fix for this.
+
 ## Repository layout
 
 ```
 server/    Node.js WebSocket signaling server (rooms, codes, join page)
+server/web/  Browser calling client served at /call/ (no app install)
 android/   Android app (Kotlin, libwebrtc)
 ```
 

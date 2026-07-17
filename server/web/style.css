@@ -1,0 +1,149 @@
+:root {
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  padding: 2rem 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  background: radial-gradient(circle at 50% 0%, #1c2436, #0b0e14 60%);
+  color: #e8eaf0;
+}
+h1 {
+  font-size: 2rem;
+  margin: 0 0 0.25rem;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+.tagline {
+  color: #9aa4c2;
+  font-size: 0.95rem;
+  text-align: center;
+  margin: 0 0 0.5rem;
+  max-width: 26rem;
+}
+.card {
+  background: #151a26;
+  border: 1px solid #262e42;
+  border-radius: 1.1rem;
+  padding: 1.5rem;
+  max-width: 26rem;
+  width: 100%;
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.6);
+}
+.card h2 {
+  font-size: 1rem;
+  margin: 0 0 1rem;
+}
+label {
+  display: block;
+  font-size: 0.8rem;
+  color: #9aa4c2;
+  margin-bottom: 0.3rem;
+}
+input[type="text"] {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.6rem;
+  border: 1px solid #333d54;
+  background: #0f1420;
+  color: #e8eaf0;
+  font-size: 1rem;
+  margin-bottom: 0.9rem;
+}
+input[type="text"]:focus {
+  outline: 2px solid #5b8def;
+}
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.82rem;
+  color: #9aa4c2;
+}
+button {
+  display: block;
+  width: 100%;
+  padding: 0.8rem 1.2rem;
+  border-radius: 0.7rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 0.7rem;
+  transition: opacity 0.15s;
+}
+button:active {
+  opacity: 0.75;
+}
+button:last-child {
+  margin-bottom: 0;
+}
+.btn-primary {
+  background: #5b8def;
+  color: #fff;
+}
+.btn-secondary {
+  background: #232b3d;
+  color: #e8eaf0;
+  border: 1px solid #333d54;
+}
+.divider {
+  border: none;
+  border-top: 1px solid #262e42;
+  margin: 1.25rem 0;
+}
+.hidden {
+  display: none !important;
+}
+#callView .card {
+  text-align: left;
+}
+#roomCodeText {
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.25rem;
+}
+#statusText {
+  color: #9aa4c2;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+.button-row {
+  display: flex;
+  gap: 0.6rem;
+}
+.button-row button {
+  margin-bottom: 0;
+}
+#participantList {
+  margin: 1rem 0;
+  min-height: 2rem;
+}
+.participant-row {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #1e2536;
+  font-size: 0.95rem;
+}
+.participant-row:last-child {
+  border-bottom: none;
+}
+footer {
+  color: #525a72;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-align: center;
+  margin-top: auto;
+}
+footer a {
+  color: #7c8bb0;
+}
