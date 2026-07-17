@@ -321,10 +321,15 @@ function invitePage() {
 //
 // The app fetches this at call start so TURN credentials are never baked into
 // the APK and can be rotated server-side. Two TURN sources are supported:
-//   - Metered (managed):  METERED_DOMAIN + METERED_API_KEY  -> fetched and
-//     cached briefly (Metered issues expiring credentials)
+//   - Metered (managed): METERED_DOMAIN (<appname>.metered.live, from the
+//     dashboard home page) + METERED_SECRET_KEY (Dashboard -> Developers ->
+//     Secret Key). We use the secret key to create a credential and fetch
+//     its ICE servers server-side, cached briefly. METERED_API_KEY is also
+//     accepted for a pre-existing credential-scoped key, but the secret-key
+//     path is recommended since it's unambiguous about which dashboard value
+//     to use.
 //   - Static (e.g. own coturn): TURN_URLS (comma-separated) + TURN_USERNAME +
-//     TURN_CREDENTIAL
+//     TURN_CREDENTIAL. Used as a fallback if Metered is unset or failing.
 // ---------------------------------------------------------------------------
 
 const STUN_SERVERS = [
@@ -344,19 +349,43 @@ function staticTurnServers() {
   ];
 }
 
-async function iceServers() {
-  const { METERED_DOMAIN, METERED_API_KEY } = process.env;
+// Metered has three key types (see their TURN REST API docs):
+//   - secretKey        account-scoped, Dashboard -> Developers, server-side only
+//   - apiKey           credential-scoped, returned by POST .../turn/credential
+//   - projectApiKey    project-scoped, Dashboard -> TURN Server -> Projects
+// GET .../turn/credentials?apiKey= specifically wants the *credential-scoped*
+// key, which is easy to grab the wrong one for from the dashboard. Since this
+// call is server-to-server (the key never reaches the app), we sidestep the
+// ambiguity by using the unambiguous secretKey to run Metered's intended
+// two-step flow ourselves: create a credential, then fetch its ICE servers.
+async function fetchMeteredWithSecretKey(domain, secretKey) {
+  const createResp = await fetch(
+    `https://${domain}/api/v1/turn/credential?secretKey=${secretKey}`,
+    { method: 'POST' }
+  );
+  if (!createResp.ok) throw new Error(`metered create credential: HTTP ${createResp.status}`);
+  const { apiKey } = await createResp.json();
+  if (!apiKey) throw new Error('metered create credential: no apiKey in response');
+  return fetchMeteredWithApiKey(domain, apiKey);
+}
 
-  if (METERED_DOMAIN && METERED_API_KEY) {
+async function fetchMeteredWithApiKey(domain, apiKey) {
+  const resp = await fetch(`https://${domain}/api/v1/turn/credentials?apiKey=${apiKey}`);
+  if (!resp.ok) throw new Error(`metered get credentials: HTTP ${resp.status}`);
+  const body = await resp.json();
+  return Array.isArray(body) ? body : body.iceServers || [];
+}
+
+async function iceServers() {
+  const { METERED_DOMAIN, METERED_SECRET_KEY, METERED_API_KEY } = process.env;
+
+  if (METERED_DOMAIN && (METERED_SECRET_KEY || METERED_API_KEY)) {
     const now = Date.now();
     if (iceCache.servers && now - iceCache.at < ICE_CACHE_MS) return iceCache.servers;
     try {
-      const resp = await fetch(
-        `https://${METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`
-      );
-      if (!resp.ok) throw new Error(`metered credentials: HTTP ${resp.status}`);
-      const body = await resp.json();
-      const turn = Array.isArray(body) ? body : body.iceServers || [];
+      const turn = METERED_SECRET_KEY
+        ? await fetchMeteredWithSecretKey(METERED_DOMAIN, METERED_SECRET_KEY)
+        : await fetchMeteredWithApiKey(METERED_DOMAIN, METERED_API_KEY);
       iceCache = { at: now, servers: [...STUN_SERVERS, ...turn] };
       return iceCache.servers;
     } catch (err) {
@@ -372,10 +401,13 @@ async function iceServers() {
 
 // Booleans only - never echoes secret values back over HTTP.
 function iceDebugInfo() {
-  const { METERED_DOMAIN, METERED_API_KEY, TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL } =
-    process.env;
+  const {
+    METERED_DOMAIN, METERED_SECRET_KEY, METERED_API_KEY,
+    TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL,
+  } = process.env;
   return {
     hasMeteredDomain: Boolean(METERED_DOMAIN),
+    hasMeteredSecretKey: Boolean(METERED_SECRET_KEY),
     hasMeteredApiKey: Boolean(METERED_API_KEY),
     hasTurnUrls: Boolean(TURN_URLS),
     hasTurnUsername: Boolean(TURN_USERNAME),
