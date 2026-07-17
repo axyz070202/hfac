@@ -58,10 +58,14 @@ The server only relays signaling (SDP/ICE) — call audio flows peer-to-peer.
    (`render.yaml` deploys `server/` as a free web service). Note the URL,
    e.g. `https://hfac-signaling.onrender.com`.
 2. **Metered** (TURN relay for peers behind carrier-grade NAT): create a free
-   account at metered.ca, create a TURN app, then set `METERED_DOMAIN`
-   (e.g. `yourapp.metered.live`) and `METERED_API_KEY` in the Render service's
-   environment. The server's `GET /ice` endpoint hands the app STUN + fresh
-   TURN credentials at call time — nothing is baked into the APK.
+   account at metered.ca, then set `METERED_DOMAIN` (e.g. `yourapp.metered.live`)
+   and `METERED_SECRET_KEY` (Dashboard → Developers → Secret Key) in the
+   Render service's environment. The app receives STUN + TURN credentials
+   inline when it creates/joins a room — nothing is baked into the APK, and
+   there's no standalone public endpoint to scrape them from. Note: Metered's
+   free tier doesn't support auto-expiring credentials (HTTP 400 on that
+   API), so this currently falls back to a still-valid but static credential
+   pair; upgrade the Metered plan or self-host coturn for real rotation.
    Alternatively point `TURN_URLS`/`TURN_USERNAME`/`TURN_CREDENTIAL` at your
    own coturn.
 3. **Bake the server URL into the app**: set repo variable `HFAC_SERVER_URL`
@@ -81,7 +85,14 @@ The server only relays signaling (SDP/ICE) — call audio flows peer-to-peer.
   Debug builds allow `ws://` for LAN testing.
 - **Abuse limits** (server): 10 join attempts/min and 20 room creations/hour
   per IP, 300 messages/10 s per connection, 64 KB max message, 500 active
-  rooms, 12-hour room lifetime.
+  rooms, 12-hour room lifetime, 5 requests/min per IP on the standalone
+  `GET /ice` (kept for manual testing; the app itself never calls it).
+- **TURN credentials aren't a bare public endpoint.** They ride along in the
+  `created`/`joined` WebSocket responses, so obtaining a set requires
+  actually creating or joining a room and is covered by the limits above —
+  not just an unauthenticated `curl`. No secret is baked into the APK to
+  gate this further, since anything shipped in a public APK can be
+  extracted; the real backstop is the rate limiting itself.
 - **Room access = code possession** (like a meeting link). Codes are
   8 random digits; don't post them publicly.
 - Peers in a call see each other's IP addresses (inherent to P2P).

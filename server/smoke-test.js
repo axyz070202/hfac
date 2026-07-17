@@ -58,6 +58,8 @@ async function main() {
   a.send(JSON.stringify({ type: 'create', mode: 'duo', name: 'Alice' }));
   const created = await a.next();
   check('created with 8-digit code', created.type === 'created' && /^\d{8}$/.test(created.code));
+  check('created includes ice servers',
+    Array.isArray(created.iceServers) && created.iceServers.length > 0);
 
   const page = await fetch(`${BASE}/j/${created.code}`).then((r) => r.text());
   check('join page has code + deep link',
@@ -89,6 +91,14 @@ async function main() {
 
   const ice = await fetch(`${BASE}/ice`).then((r) => r.json());
   check('ice config returns servers', Array.isArray(ice.iceServers) && ice.iceServers.length > 0);
+
+  // Hammer GET /ice until its own (separate, tighter) per-IP limiter trips.
+  let iceLimited = false;
+  for (let i = 0; i < 10 && !iceLimited; i++) {
+    const r = await fetch(`${BASE}/ice`);
+    iceLimited = r.status === 429;
+  }
+  check('GET /ice is rate limited', iceLimited);
 
   // Hammer join until the per-IP limiter trips (all test clients share one IP).
   const bot = await connect();

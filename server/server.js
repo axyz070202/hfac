@@ -24,6 +24,7 @@ const ROOM_TTL_MS = Number(process.env.ROOM_TTL_HOURS || 12) * 3_600_000;
 const JOIN_LIMIT = { max: 10, windowMs: 60_000 }; // join attempts per IP
 const CREATE_LIMIT = { max: 20, windowMs: 3_600_000 }; // room creations per IP
 const MSG_LIMIT = { max: 300, windowMs: 10_000 }; // messages per connection
+const ICE_HTTP_LIMIT = { max: 5, windowMs: 60_000 }; // GET /ice requests per IP
 const MAX_PAYLOAD_BYTES = 64 * 1024; // SDP blobs are ~10 KB
 
 /** @type {Map<string, Room>} code -> room */
@@ -56,13 +57,13 @@ function allow(timestamps, { max, windowMs }) {
   return true;
 }
 
-/** @type {Map<string, {join: number[], create: number[]}>} */
+/** @type {Map<string, {join: number[], create: number[], ice: number[]}>} */
 const ipHistory = new Map();
 
 function ipBucket(ip) {
   let bucket = ipHistory.get(ip);
   if (!bucket) {
-    bucket = { join: [], create: [] };
+    bucket = { join: [], create: [], ice: [] };
     ipHistory.set(ip, bucket);
   }
   return bucket;
@@ -131,7 +132,7 @@ function leaveRoom(ws) {
   }
 }
 
-function handleMessage(ws, msg) {
+async function handleMessage(ws, msg) {
   switch (msg.type) {
     case 'create': {
       if (ws.room) return send(ws, { type: 'error', reason: 'already in a room' });
@@ -145,7 +146,11 @@ function handleMessage(ws, msg) {
       ws.room = room;
       room.members.set(ws.clientId, ws);
       room.names.set(ws.clientId, String(msg.name || 'Guest').slice(0, 32));
-      send(ws, { type: 'created', code: room.code, mode, selfId: ws.clientId });
+      // ICE servers (incl. TURN credentials) ride along with room entry
+      // instead of a separate public endpoint, so getting them requires
+      // passing through the same rate-limited create/join flow.
+      const ice = await iceServers();
+      send(ws, { type: 'created', code: room.code, mode, selfId: ws.clientId, iceServers: ice });
       console.log(`room ${room.code} created (${mode}) by ${ws.clientId}`);
       break;
     }
@@ -169,7 +174,10 @@ function handleMessage(ws, msg) {
       ws.room = room;
       room.members.set(ws.clientId, ws);
       room.names.set(ws.clientId, name);
-      send(ws, { type: 'joined', code, mode: room.mode, selfId: ws.clientId, peers });
+      const ice = await iceServers();
+      send(ws, {
+        type: 'joined', code, mode: room.mode, selfId: ws.clientId, peers, iceServers: ice,
+      });
       broadcast(room, { type: 'peer-joined', id: ws.clientId, name }, ws.clientId);
       console.log(`${ws.clientId} joined room ${code} (${room.members.size}/${room.capacity})`);
       break;
@@ -317,10 +325,14 @@ function invitePage() {
 }
 
 // ---------------------------------------------------------------------------
-// ICE configuration (/ice): STUN always; TURN when configured.
+// ICE configuration: STUN always; TURN when configured.
 //
-// The app fetches this at call start so TURN credentials are never baked into
-// the APK and can be rotated server-side. Two TURN sources are supported:
+// TURN credentials are never baked into the APK. The app receives them
+// inline in the WebSocket 'created'/'joined' responses (see handleMessage),
+// so getting them requires actually creating or joining a room and is
+// covered by CREATE_LIMIT/JOIN_LIMIT. A plain GET /ice also exists for
+// manual testing, rate-limited separately (ICE_HTTP_LIMIT). Two TURN
+// sources are supported:
 //   - Metered (managed): METERED_DOMAIN (<appname>.metered.live, from the
 //     dashboard home page) + METERED_SECRET_KEY (Dashboard -> Developers ->
 //     Secret Key). We use the secret key to create a credential and fetch
@@ -337,8 +349,6 @@ const STUN_SERVERS = [
 ];
 const ICE_CACHE_MS = 10 * 60_000;
 let iceCache = { at: 0, servers: null };
-// TEMPORARY - remove once the Metered dynamic-credentials path is confirmed.
-let lastIceError = null;
 
 function staticTurnServers() {
   const { TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL } = process.env;
@@ -396,7 +406,6 @@ async function iceServers() {
       iceCache = { at: now, servers: [...STUN_SERVERS, ...turn] };
       return iceCache.servers;
     } catch (err) {
-      lastIceError = `${new Date().toISOString()} ${err.message}`;
       console.error('ice config error:', err.message);
       // Fall through to static config (if any) rather than dropping to
       // STUN-only just because the managed provider is misconfigured.
@@ -404,23 +413,6 @@ async function iceServers() {
   }
 
   return staticTurnServers() || STUN_SERVERS;
-}
-
-// Booleans only - never echoes secret values back over HTTP.
-function iceDebugInfo() {
-  const {
-    METERED_DOMAIN, METERED_SECRET_KEY, METERED_API_KEY,
-    TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL,
-  } = process.env;
-  return {
-    hasMeteredDomain: Boolean(METERED_DOMAIN),
-    hasMeteredSecretKey: Boolean(METERED_SECRET_KEY),
-    hasMeteredApiKey: Boolean(METERED_API_KEY),
-    hasTurnUrls: Boolean(TURN_URLS),
-    hasTurnUsername: Boolean(TURN_USERNAME),
-    hasTurnCredential: Boolean(TURN_CREDENTIAL),
-    lastError: lastIceError,
-  };
 }
 
 const httpServer = http.createServer((req, res) => {
@@ -433,21 +425,25 @@ const httpServer = http.createServer((req, res) => {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(joinPage(joinMatch[1]));
   } else if (url.pathname === '/ice') {
+    // Kept for manual testing/back-compat; the app itself gets ICE servers
+    // via the WebSocket create/join responses above, which already ride on
+    // the room rate limits. This bare endpoint gets its own light limit so
+    // it isn't a free, unlimited way to scrape TURN credentials.
+    if (!allow(ipBucket(clientIp(req)).ice, ICE_HTTP_LIMIT)) {
+      res.writeHead(429, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: 'rate limited' }));
+      return;
+    }
     iceServers()
       .then((servers) => {
         res.writeHead(200, { 'content-type': 'application/json' });
-        const body = { iceServers: servers };
-        if (url.searchParams.has('debug')) body.debug = iceDebugInfo();
-        res.end(JSON.stringify(body));
+        res.end(JSON.stringify({ iceServers: servers }));
       })
       .catch((err) => {
-        lastIceError = `${new Date().toISOString()} ${err.message}`;
         console.error('ice config error:', err.message);
         // Degrade to STUN-only rather than failing the call attempt.
         res.writeHead(200, { 'content-type': 'application/json' });
-        const body = { iceServers: STUN_SERVERS };
-        if (url.searchParams.has('debug')) body.debug = iceDebugInfo();
-        res.end(JSON.stringify(body));
+        res.end(JSON.stringify({ iceServers: STUN_SERVERS }));
       });
   } else if (url.pathname === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
@@ -487,12 +483,10 @@ wss.on('connection', (ws, req) => {
     } catch {
       return send(ws, { type: 'error', reason: 'invalid JSON' });
     }
-    try {
-      handleMessage(ws, msg);
-    } catch (err) {
+    handleMessage(ws, msg).catch((err) => {
       console.error('handler error:', err);
       send(ws, { type: 'error', reason: 'internal error' });
-    }
+    });
   });
   ws.on('close', () => leaveRoom(ws));
 });

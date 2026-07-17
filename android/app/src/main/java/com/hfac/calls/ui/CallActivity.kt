@@ -18,10 +18,10 @@ import com.hfac.calls.audio.AudioRouter
 import com.hfac.calls.call.CallService
 import com.hfac.calls.rtc.WebRtcEngine
 import com.hfac.calls.signaling.SignalingClient
-import com.hfac.calls.util.IceConfig
 import com.hfac.calls.util.Prefs
 import com.hfac.calls.util.QrCode
 import org.json.JSONObject
+import org.webrtc.PeerConnection
 
 class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine.Listener {
 
@@ -38,6 +38,7 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
     private var shareLink: String? = null
     private var muted = false
     private var leaving = false
+    private var hiFi = false
 
     /** peerId -> display name; also drives the participant list UI. */
     private val participants = LinkedHashMap<String, String>()
@@ -58,7 +59,7 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
 
         val server = intent.getStringExtra(CallIntent.EXTRA_SERVER) ?: return finish()
         val name = intent.getStringExtra(CallIntent.EXTRA_NAME) ?: "Guest"
-        val hiFi = intent.getBooleanExtra(CallIntent.EXTRA_HIFI, false)
+        hiFi = intent.getBooleanExtra(CallIntent.EXTRA_HIFI, false)
         val createMode = intent.getStringExtra(CallIntent.EXTRA_MODE)
         val joinCode = intent.getStringExtra(CallIntent.EXTRA_CODE)
 
@@ -69,22 +70,18 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
 
         shareBaseUrl = Prefs.toHttpBase(server)
 
-        // Once the socket is open, either create or join.
+        // Once the socket is open, either create or join. ICE servers (incl.
+        // TURN credentials) arrive inline in the resulting 'created'/'joined'
+        // response — see onCreated/onJoined — rather than a separate fetch,
+        // so getting them requires actually passing through this rate-limited
+        // room flow instead of hitting a standalone public endpoint.
         pendingOnOpen = {
             if (createMode != null) signaling.createRoom(createMode, name)
             else signaling.joinRoom(joinCode ?: "", name)
         }
 
-        // ICE config (incl. short-lived TURN credentials) comes from the
-        // server, then the call stack starts. Falls back to STUN on failure.
-        IceConfig.fetch(shareBaseUrl) { servers ->
-            runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
-                engine = WebRtcEngine(applicationContext, hiFi, servers, this)
-                signaling = SignalingClient(Prefs.toWsUrl(server), this)
-                signaling.connect()
-            }
-        }
+        signaling = SignalingClient(Prefs.toWsUrl(server), this)
+        signaling.connect()
 
         findViewById<Button>(R.id.btnShare).setOnClickListener { shareRoom() }
         findViewById<Button>(R.id.btnQr).setOnClickListener { showQr() }
@@ -102,14 +99,23 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
         runOnUiThread { pendingOnOpen?.invoke(); pendingOnOpen = null }
     }
 
-    override fun onCreated(code: String, mode: String, selfId: String) {
-        runOnUiThread { onRoomEntered(code) }
+    override fun onCreated(
+        code: String, mode: String, selfId: String, iceServers: List<PeerConnection.IceServer>,
+    ) {
+        runOnUiThread {
+            if (isFinishing || isDestroyed) return@runOnUiThread
+            engine = WebRtcEngine(applicationContext, hiFi, iceServers, this)
+            onRoomEntered(code)
+        }
     }
 
     override fun onJoined(
         code: String, mode: String, selfId: String, peers: List<Pair<String, String>>,
+        iceServers: List<PeerConnection.IceServer>,
     ) {
         runOnUiThread {
+            if (isFinishing || isDestroyed) return@runOnUiThread
+            engine = WebRtcEngine(applicationContext, hiFi, iceServers, this)
             onRoomEntered(code)
             // We are the newcomer: offer to every existing member.
             for ((id, peerName) in peers) {
@@ -136,7 +142,7 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
     }
 
     override fun onPeerLeft(id: String) {
-        engine.removePeer(id)
+        if (::engine.isInitialized) engine.removePeer(id)
         runOnUiThread {
             participants.remove(id)
             connectedPeers.remove(id)
@@ -145,7 +151,7 @@ class CallActivity : AppCompatActivity(), SignalingClient.Listener, WebRtcEngine
     }
 
     override fun onSignal(from: String, data: JSONObject) {
-        engine.handleSignal(from, data)
+        if (::engine.isInitialized) engine.handleSignal(from, data)
     }
 
     override fun onError(reason: String) {

@@ -1,12 +1,14 @@
 package com.hfac.calls.signaling
 
 import android.util.Log
+import com.hfac.calls.util.IceConfig
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import org.webrtc.PeerConnection
 import java.util.concurrent.TimeUnit
 
 /**
@@ -20,8 +22,13 @@ class SignalingClient(
 ) {
     interface Listener {
         fun onOpen()
-        fun onCreated(code: String, mode: String, selfId: String)
-        fun onJoined(code: String, mode: String, selfId: String, peers: List<Pair<String, String>>)
+        fun onCreated(
+            code: String, mode: String, selfId: String, iceServers: List<PeerConnection.IceServer>,
+        )
+        fun onJoined(
+            code: String, mode: String, selfId: String, peers: List<Pair<String, String>>,
+            iceServers: List<PeerConnection.IceServer>,
+        )
         fun onPeerJoined(id: String, name: String)
         fun onPeerLeft(id: String)
         fun onSignal(from: String, data: JSONObject)
@@ -48,7 +55,8 @@ class SignalingClient(
                 }
                 when (msg.optString("type")) {
                     "created" -> listener.onCreated(
-                        msg.getString("code"), msg.getString("mode"), msg.getString("selfId"))
+                        msg.getString("code"), msg.getString("mode"), msg.getString("selfId"),
+                        IceConfig.parse(msg.getJSONArray("iceServers")))
                     "joined" -> {
                         val peersJson = msg.getJSONArray("peers")
                         val peers = (0 until peersJson.length()).map { i ->
@@ -57,7 +65,8 @@ class SignalingClient(
                         }
                         listener.onJoined(
                             msg.getString("code"), msg.getString("mode"),
-                            msg.getString("selfId"), peers)
+                            msg.getString("selfId"), peers,
+                            IceConfig.parse(msg.getJSONArray("iceServers")))
                     }
                     "peer-joined" -> listener.onPeerJoined(
                         msg.getString("id"), msg.optString("name", "Guest"))
