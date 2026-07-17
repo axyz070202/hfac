@@ -204,22 +204,53 @@ function handleMessage(ws, msg) {
 // HTTP: health check + join landing page (for shared links / QR codes)
 // ---------------------------------------------------------------------------
 
+// GitHub's "latest release" download link is stable across versions as long
+// as the asset filename is always the same (release.yml uploads "hfac.apk"
+// alongside the versioned one specifically for this URL).
+const APK_DOWNLOAD_URL =
+  process.env.APK_DOWNLOAD_URL ||
+  'https://github.com/axyz070202/hfac/releases/latest/download/hfac.apk';
+
 function joinPage(code) {
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Join HFAC room</title>
 <style>
-  body{font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;
-       justify-content:center;min-height:90vh;gap:1rem;background:#111;color:#eee;margin:0}
-  .code{font-size:2.5rem;letter-spacing:.35rem;font-weight:700}
-  a.btn{background:#4c8bf5;color:#fff;text-decoration:none;padding:.8rem 1.6rem;border-radius:.6rem}
-  p{color:#999;max-width:26rem;text-align:center;padding:0 1rem}
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;
+       flex-direction:column;align-items:center;justify-content:center;min-height:100vh;
+       gap:1.25rem;margin:0;padding:2rem 1rem;
+       background:radial-gradient(circle at 50% 0%,#1c2436,#0b0e14 60%);color:#e8eaf0}
+  .card{background:#151a26;border:1px solid #262e42;border-radius:1.1rem;padding:2rem 1.75rem;
+        max-width:26rem;width:100%;text-align:center;
+        box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
+  .kicker{font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:#7c8bb0;margin-bottom:.4rem}
+  .code{font-size:2.4rem;letter-spacing:.3rem;font-weight:700;font-variant-numeric:tabular-nums;
+        color:#fff;margin:0 0 1.5rem}
+  ol{text-align:left;color:#b6bdd1;font-size:.92rem;line-height:1.6;margin:0 0 1.5rem;padding-left:1.2rem}
+  ol li{margin-bottom:.3rem}
+  a.btn{display:block;text-decoration:none;padding:.85rem 1.4rem;border-radius:.7rem;
+        font-weight:600;font-size:.95rem;margin-bottom:.7rem;transition:opacity .15s}
+  a.btn:active{opacity:.75}
+  a.primary{background:#5b8def;color:#fff}
+  a.secondary{background:#232b3d;color:#e8eaf0;border:1px solid #333d54}
+  .hint{color:#7c8bb0;font-size:.8rem;margin-top:.75rem}
+  footer{color:#525a72;font-size:.78rem;letter-spacing:.02em}
 </style></head><body>
-<div>HFAC room code</div>
-<div class="code">${code}</div>
-<a class="btn" href="hfac://join/${code}">Open in HFAC app</a>
-<p>If nothing happens, open the HFAC app and enter the code manually,
-or scan this page's QR code from inside the app.</p>
+<div class="card">
+  <div class="kicker">HFAC room</div>
+  <div class="code">${code}</div>
+  <ol>
+    <li>Don't have HFAC yet? Download &amp; install it below.</li>
+    <li>Then come back and tap <strong>Open in HFAC app</strong>.</li>
+    <li>No app? Just enter the code above manually once it's installed.</li>
+  </ol>
+  <a class="btn primary" href="${APK_DOWNLOAD_URL}">⬇ Download HFAC (Android)</a>
+  <a class="btn secondary" href="hfac://join/${code}">Open in HFAC app</a>
+  <p class="hint">Or scan this page's QR code from inside the app.</p>
+</div>
+<footer>Powered by Nightfury</footer>
 </body></html>`;
 }
 

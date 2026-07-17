@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HFAC</string>
-    <string name="app_tagline">High Fidelity Audio Calls — on the media channel</string>
+    <string name="app_tagline">High Fidelity Audio Calls</string>
+    <string name="powered_by">Powered by Nightfury</string>
 
     <!-- Home -->
+    <string name="section_start_call">Start a call</string>
+    <string name="section_join_call">Join a call</string>
     <string name="server_url_hint">Signaling server (e.g. ws://192.168.1.10:8787)</string>
     <string name="display_name_hint">Your name</string>
     <string name="create_duo">New 1-to-1 room</string>
