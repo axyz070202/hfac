@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">HFAC</string>
     <string name="app_tagline">High Fidelity Audio Calls</string>
-    <string name="powered_by">Powered by Nightfury</string>
+    <string name="powered_by">v%1$s · Powered by Nightfury</string>
 
     <!-- Home -->
     <string name="section_start_call">Start a call</string>

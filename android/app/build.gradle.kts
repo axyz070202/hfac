@@ -11,8 +11,8 @@ android {
         applicationId = "com.hfac.calls"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 5
+        versionName = "0.5.0"
 
         // Baked-in signaling server. Supplied at build time via the
         // HFAC_SERVER_URL Gradle property (CI sets ORG_GRADLE_PROJECT_HFAC_SERVER_URL

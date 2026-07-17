@@ -219,6 +219,10 @@ const APK_DOWNLOAD_URL =
   process.env.APK_DOWNLOAD_URL ||
   'https://github.com/axyz070202/hfac/releases/latest/download/hfac.apk';
 
+// Shown in page footers/download buttons. Bump alongside every release tag
+// (android/app/build.gradle.kts versionName) - see README's release checklist.
+const APP_VERSION = process.env.APP_VERSION || '0.5.0';
+
 function joinPage(code) {
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -254,11 +258,11 @@ function joinPage(code) {
     <li>Then come back and tap <strong>Open in HFAC app</strong>.</li>
     <li>No app? Just enter the code above manually once it's installed.</li>
   </ol>
-  <a class="btn primary" href="${APK_DOWNLOAD_URL}">⬇ Download HFAC (Android)</a>
+  <a class="btn primary" href="${APK_DOWNLOAD_URL}">⬇ Download HFAC v${APP_VERSION} (Android)</a>
   <a class="btn secondary" href="hfac://join/${code}">Open in HFAC app</a>
   <p class="hint">Or scan this page's QR code from inside the app.</p>
 </div>
-<footer>Powered by Nightfury</footer>
+<footer>v${APP_VERSION} · Powered by Nightfury</footer>
 </body></html>`;
 }
 
@@ -318,9 +322,9 @@ function invitePage() {
   audio channel, not the muffled voice-call one.</p>
 </div>
 <div class="card">${featureHtml}</div>
-<a class="btn" href="${APK_DOWNLOAD_URL}">⬇ Download HFAC for Android</a>
+<a class="btn" href="${APK_DOWNLOAD_URL}">⬇ Download HFAC v${APP_VERSION} for Android</a>
 <p class="platform-note">Android only, for now.</p>
-<footer>Powered by Nightfury</footer>
+<footer>v${APP_VERSION} · Powered by Nightfury</footer>
 </body></html>`;
 }
 

@@ -112,6 +112,21 @@ On first launch set the **server URL** (e.g. `ws://192.168.1.10:8787`) and a
 display name, then create or join a room. Emulator talking to a server on the
 host machine: use `ws://10.0.2.2:8787`.
 
+## Cutting a release
+
+The app version and the website's displayed version are two separate values
+that must be bumped together:
+
+1. `android/app/build.gradle.kts` — bump `versionCode` (+1) and `versionName`
+   (e.g. `"0.5.0"`).
+2. `server/server.js` — bump the `APP_VERSION` constant to match (or set the
+   `APP_VERSION` env var on Render instead of editing code).
+3. Commit, merge `develop` → `main`, `git tag vX.Y.Z && git push origin vX.Y.Z`.
+   CI builds, signs, and publishes the release automatically.
+
+`versionName` also drives the "Powered by Nightfury" footer in the app
+(via `BuildConfig.VERSION_NAME`, no separate edit needed there).
+
 ## Known limitations
 
 - Speaker + phone-mic (no peripheral) relies on software echo cancellation;

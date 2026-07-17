@@ -65,6 +65,9 @@ class MainActivity : AppCompatActivity() {
         displayName.setText(prefs.displayName)
         hifiMode.isChecked = prefs.hiFi
 
+        findViewById<android.widget.TextView>(R.id.footerText).text =
+            getString(R.string.powered_by, BuildConfig.VERSION_NAME)
+
         // With a baked-in server, users never see the URL field. Long-press
         // the title to reveal it as a dev override; a manually saved URL
         // keeps it visible and takes precedence.
