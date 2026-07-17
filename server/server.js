@@ -239,7 +239,6 @@ const STUN_SERVERS = [
 ];
 const ICE_CACHE_MS = 10 * 60_000;
 let iceCache = { at: 0, servers: null };
-let lastIceError = null;
 
 async function iceServers() {
   const { METERED_DOMAIN, METERED_API_KEY, TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL } =
@@ -268,20 +267,6 @@ async function iceServers() {
   return STUN_SERVERS;
 }
 
-// Booleans only - never echoes secret values back over HTTP.
-function iceDebugInfo() {
-  const { METERED_DOMAIN, METERED_API_KEY, TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL } =
-    process.env;
-  return {
-    hasMeteredDomain: Boolean(METERED_DOMAIN),
-    hasMeteredApiKey: Boolean(METERED_API_KEY),
-    hasTurnUrls: Boolean(TURN_URLS),
-    hasTurnUsername: Boolean(TURN_USERNAME),
-    hasTurnCredential: Boolean(TURN_CREDENTIAL),
-    lastError: lastIceError,
-  };
-}
-
 const httpServer = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const joinMatch = url.pathname.match(/^\/j\/(\d{8})$/);
@@ -292,18 +277,13 @@ const httpServer = http.createServer((req, res) => {
     iceServers()
       .then((servers) => {
         res.writeHead(200, { 'content-type': 'application/json' });
-        const body = { iceServers: servers };
-        if (url.searchParams.has('debug')) body.debug = iceDebugInfo();
-        res.end(JSON.stringify(body));
+        res.end(JSON.stringify({ iceServers: servers }));
       })
       .catch((err) => {
-        lastIceError = `${new Date().toISOString()} ${err.message}`;
         console.error('ice config error:', err.message);
         // Degrade to STUN-only rather than failing the call attempt.
         res.writeHead(200, { 'content-type': 'application/json' });
-        const body = { iceServers: STUN_SERVERS };
-        if (url.searchParams.has('debug')) body.debug = iceDebugInfo();
-        res.end(JSON.stringify(body));
+        res.end(JSON.stringify({ iceServers: STUN_SERVERS }));
       });
   } else if (url.pathname === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
