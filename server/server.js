@@ -254,6 +254,68 @@ function joinPage(code) {
 </body></html>`;
 }
 
+// General invite/landing page — no room attached, just "come get the app".
+// Meant to be shared directly (e.g. the bare server URL, a bio link, a QR
+// code on a poster) rather than generated per-room.
+function invitePage() {
+  const features = [
+    ['🎧', 'Media-channel audio', 'Calls run on the same high-quality audio path as music, not the muffled voice-call channel.'],
+    ['🔊', 'Full Bluetooth quality', 'Bluetooth earphones get full A2DP fidelity output instead of low-quality call-mode audio.'],
+    ['🔒', 'End-to-end encrypted', 'Every call is peer-to-peer with DTLS-SRTP encryption, plus a safety code to verify it.'],
+    ['🔗', 'Instant rooms', 'Start a 1-to-1 or group call and invite others by link, QR code, or an 8-digit number.'],
+  ];
+  const featureHtml = features
+    .map(
+      ([icon, title, desc]) => `
+    <div class="feature">
+      <div class="feature-icon">${icon}</div>
+      <div>
+        <div class="feature-title">${title}</div>
+        <div class="feature-desc">${desc}</div>
+      </div>
+    </div>`
+    )
+    .join('');
+
+  return `<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HFAC — High Fidelity Audio Calls</title>
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;
+       flex-direction:column;align-items:center;min-height:100vh;margin:0;
+       padding:3rem 1.25rem 2rem;gap:2rem;
+       background:radial-gradient(circle at 50% 0%,#1c2436,#0b0e14 60%);color:#e8eaf0}
+  .hero{text-align:center;max-width:28rem}
+  h1{font-size:2.4rem;margin:0 0 .5rem;letter-spacing:-.02em}
+  .tagline{color:#9aa4c2;font-size:1.05rem;margin:0}
+  .card{background:#151a26;border:1px solid #262e42;border-radius:1.1rem;padding:1.75rem;
+        max-width:28rem;width:100%;box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
+  .feature{display:flex;gap:.9rem;align-items:flex-start;margin-bottom:1.25rem}
+  .feature:last-child{margin-bottom:0}
+  .feature-icon{font-size:1.4rem;line-height:1.6rem}
+  .feature-title{font-weight:600;font-size:.95rem;color:#fff;margin-bottom:.15rem}
+  .feature-desc{color:#9aa4c2;font-size:.85rem;line-height:1.45}
+  a.btn{display:block;text-decoration:none;padding:1rem 1.4rem;border-radius:.7rem;
+        font-weight:600;font-size:1rem;text-align:center;max-width:28rem;width:100%;
+        background:#5b8def;color:#fff;transition:opacity .15s}
+  a.btn:active{opacity:.75}
+  .platform-note{color:#7c8bb0;font-size:.8rem;text-align:center}
+  footer{color:#525a72;font-size:.78rem;letter-spacing:.02em;margin-top:auto}
+</style></head><body>
+<div class="hero">
+  <h1>HFAC</h1>
+  <p class="tagline">High Fidelity Audio Calls — internet calling on the media
+  audio channel, not the muffled voice-call one.</p>
+</div>
+<div class="card">${featureHtml}</div>
+<a class="btn" href="${APK_DOWNLOAD_URL}">⬇ Download HFAC for Android</a>
+<p class="platform-note">Android only, for now.</p>
+<footer>Powered by Nightfury</footer>
+</body></html>`;
+}
+
 // ---------------------------------------------------------------------------
 // ICE configuration (/ice): STUN always; TURN when configured.
 //
@@ -301,7 +363,10 @@ async function iceServers() {
 const httpServer = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const joinMatch = url.pathname.match(/^\/j\/(\d{8})$/);
-  if (joinMatch) {
+  if (url.pathname === '/') {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(invitePage());
+  } else if (joinMatch) {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(joinPage(joinMatch[1]));
   } else if (url.pathname === '/ice') {
