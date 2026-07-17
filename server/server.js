@@ -332,37 +332,45 @@ const STUN_SERVERS = [
 ];
 const ICE_CACHE_MS = 10 * 60_000;
 let iceCache = { at: 0, servers: null };
+// TEMPORARY - remove once the Metered dynamic-credentials path is confirmed.
+let lastIceError = null;
+
+function staticTurnServers() {
+  const { TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL } = process.env;
+  if (!TURN_URLS) return null;
+  return [
+    ...STUN_SERVERS,
+    { urls: TURN_URLS.split(','), username: TURN_USERNAME, credential: TURN_CREDENTIAL },
+  ];
+}
 
 async function iceServers() {
-  const { METERED_DOMAIN, METERED_API_KEY, TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL } =
-    process.env;
+  const { METERED_DOMAIN, METERED_API_KEY } = process.env;
 
   if (METERED_DOMAIN && METERED_API_KEY) {
     const now = Date.now();
     if (iceCache.servers && now - iceCache.at < ICE_CACHE_MS) return iceCache.servers;
-    const resp = await fetch(
-      `https://${METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`
-    );
-    if (!resp.ok) throw new Error(`metered credentials: HTTP ${resp.status}`);
-    const body = await resp.json();
-    const turn = Array.isArray(body) ? body : body.iceServers || [];
-    iceCache = { at: now, servers: [...STUN_SERVERS, ...turn] };
-    return iceCache.servers;
+    try {
+      const resp = await fetch(
+        `https://${METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`
+      );
+      if (!resp.ok) throw new Error(`metered credentials: HTTP ${resp.status}`);
+      const body = await resp.json();
+      const turn = Array.isArray(body) ? body : body.iceServers || [];
+      iceCache = { at: now, servers: [...STUN_SERVERS, ...turn] };
+      return iceCache.servers;
+    } catch (err) {
+      lastIceError = `${new Date().toISOString()} ${err.message}`;
+      console.error('ice config error:', err.message);
+      // Fall through to static config (if any) rather than dropping to
+      // STUN-only just because the managed provider is misconfigured.
+    }
   }
 
-  if (TURN_URLS) {
-    return [
-      ...STUN_SERVERS,
-      { urls: TURN_URLS.split(','), username: TURN_USERNAME, credential: TURN_CREDENTIAL },
-    ];
-  }
-
-  return STUN_SERVERS;
+  return staticTurnServers() || STUN_SERVERS;
 }
 
-// TEMPORARY - booleans only, never echoes secret values back over HTTP.
-// Remove once the Metered dynamic-credentials path is confirmed working.
-let lastIceError = null;
+// Booleans only - never echoes secret values back over HTTP.
 function iceDebugInfo() {
   const { METERED_DOMAIN, METERED_API_KEY, TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL } =
     process.env;
