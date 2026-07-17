@@ -360,6 +360,22 @@ async function iceServers() {
   return STUN_SERVERS;
 }
 
+// TEMPORARY - booleans only, never echoes secret values back over HTTP.
+// Remove once the Metered dynamic-credentials path is confirmed working.
+let lastIceError = null;
+function iceDebugInfo() {
+  const { METERED_DOMAIN, METERED_API_KEY, TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL } =
+    process.env;
+  return {
+    hasMeteredDomain: Boolean(METERED_DOMAIN),
+    hasMeteredApiKey: Boolean(METERED_API_KEY),
+    hasTurnUrls: Boolean(TURN_URLS),
+    hasTurnUsername: Boolean(TURN_USERNAME),
+    hasTurnCredential: Boolean(TURN_CREDENTIAL),
+    lastError: lastIceError,
+  };
+}
+
 const httpServer = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const joinMatch = url.pathname.match(/^\/j\/(\d{8})$/);
@@ -373,13 +389,18 @@ const httpServer = http.createServer((req, res) => {
     iceServers()
       .then((servers) => {
         res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ iceServers: servers }));
+        const body = { iceServers: servers };
+        if (url.searchParams.has('debug')) body.debug = iceDebugInfo();
+        res.end(JSON.stringify(body));
       })
       .catch((err) => {
+        lastIceError = `${new Date().toISOString()} ${err.message}`;
         console.error('ice config error:', err.message);
         // Degrade to STUN-only rather than failing the call attempt.
         res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ iceServers: STUN_SERVERS }));
+        const body = { iceServers: STUN_SERVERS };
+        if (url.searchParams.has('debug')) body.debug = iceDebugInfo();
+        res.end(JSON.stringify(body));
       });
   } else if (url.pathname === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
